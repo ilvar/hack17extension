@@ -15,6 +15,8 @@ function getCurrentTabUrl(callback) {
 
 document.addEventListener('DOMContentLoaded', () => {
   var $container = $("#container");
+  chrome.storage.local.clear();
+  $container.html("");
 
   getCurrentTabUrl((url) => {
     function checkResult(r) {
@@ -25,22 +27,27 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     }
 
+    function updateResults(results) {
+      var html = "";
+      results.pages.forEach((p) => {
+        html = html + "<div><a href='" + p.url + "'>" + p.title + "</a></div>";
+      });
+      $container.html(html);
+    }
+
     var query = {
       text: "wikipedia"
     };
     chrome.history.search(query, (results) => {
       var filtered = results.filter(checkResult);
-      var html = "";
-      filtered.sort((a, b) => {
-        if (a.visitedAt < b.visitedAt) { return -1 }
-        if (a.visitedAt > b.visitedAt) { return 1  }
-
-        return 0;
-      }).forEach(r => {
-        html = html + "<div><a href='" + r.url + "'>" + r.title + "</a></div>";
+      var articles = filtered.map(r => {
+        return r.url.split("/")[4];
+      }).filter((u) => {
+        return u;
+      }).join(",");
+      $.getJSON("http://localhost:8080/multigraph/" + articles, (results) => {
+        updateResults(results);
       });
-      $container.html(html);
-      console.log(filtered);
     });
   });
 
